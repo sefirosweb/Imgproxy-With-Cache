@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+node /home/app/dist/index.js
+

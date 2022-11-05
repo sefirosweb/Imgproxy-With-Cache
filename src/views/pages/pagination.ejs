@@ -1,0 +1,40 @@
+<div class="container">
+  <h1 class="mt-5">Media Server</h1>
+  <div>Current folder:</div>
+
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+
+      <% foldersArray.forEach(function(folderArray) { %>
+      <% if(folderArray.active){ %>
+      <li class="breadcrumb-item active">
+        <%= folderArray.title %>
+      </li>
+      <% } else { %>
+      <li class="breadcrumb-item">
+        <a href="<%= `${appUrl}/${folderArray.path}` %>">
+          <%= folderArray.title %>
+        </a>
+      </li>
+      <% } %>
+      <% }); %>
+
+    </ol>
+  </nav>
+
+  <% if(folders.length > 0){ %>
+  <h2>Folders:</h2>
+  <ul>
+    <% folders.forEach(function(folder) { %>
+    <li><a href="<%= `${appUrl}${path}/${folder.name}` %>">
+        <%= folder.name %>
+      </a></li>
+    <% }); %>
+  </ul>
+  <% } %>
+
+  <% if(files.length > 0){ %>
+  <h2>Images</h2>
+  <%- include('../partials/gridImages'); %>
+  <% } %>
+</div>
