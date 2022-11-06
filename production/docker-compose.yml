@@ -1,7 +1,7 @@
 version: '3'
 services:
   imgproxywithcache:
-    image: "darthsim/imgproxywithcache:latest"
+    image: "sefirosweb/imgproxywithcache:latest"
     restart: always
     container_name: imgproxywithcache
     hostname: imgproxywithcache

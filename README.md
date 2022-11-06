@@ -39,10 +39,9 @@ Current parameters included:
 
 **Docker is required** because Imgproxy are used via docker to compress the files
 
-1. Clone the repository: `git clone https://github.com/sefirosweb/Imgproxy-With-Cache.git`
+1. Copy example docker compose: `curl -o docker-compose.yml https://raw.githubusercontent.com/sefirosweb/Imgproxy-With-Cache/master/production/docker-compose.yml`
 2. Create and edit `.env` file, you need to set the port and app_url
-3. Build the docker image: `docker-compose -f docker-compose-prod.yml build`
-4. Start docker compose: `docker-compose -f docker-compose-prod.yml up -d`
+3. Start docker compose: `docker-compose -up -d`
 
 ## Develop
 
@@ -57,6 +56,12 @@ Current parameters included:
 7. Start server: `npm start`
 
 You can debug with vscode, default port to listen: 9229
+
+### Upload to docker
+
+1. docker build -f docker/Dockerfile -t sefirosweb/imgproxywithcache:latest .
+2. docker tag sefirosweb/imgproxywithcache:latest sefirosweb/imgproxywithcache:1.0.0
+3. docker push sefirosweb/imgproxywithcache:latest
 
 ### TODOS
 
