@@ -44,7 +44,7 @@ app.get("/*", async (req: Request, res: Response) => {
         .map(dirent => {
             const newFile = {
                 ...dirent,
-                fileSize: Math.floor(statSync(mediaPath + dirent.name).size / 1024 / 1024 * 100) / 100
+                fileSize: Math.floor(statSync(mediaPath + '/' + dirent.name).size / 1024 / 1024 * 100) / 100
             }
             return newFile
         })
