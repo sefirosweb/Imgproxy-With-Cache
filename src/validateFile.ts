@@ -2,7 +2,7 @@ import { Response } from "express"
 import { existsSync } from "fs"
 import crypto from "crypto";
 import compress from "./compress"
-import { Codecs, EncodeOptions, validFiles } from "./types"
+import { Formats, EncodeOptions, ResizingType } from "./types"
 import path from "path";
 import dotenv from "dotenv";
 import Semaphore from "./semaphore";
@@ -23,40 +23,50 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
     }
 
     const encoding: EncodeOptions = {
-        path: reqPath
+        path: reqPath,
+        format: Formats.jpg
+    }
+
+    const format = query.format ?? Formats.jpg
+    if (isFormat(format)) {
+        encoding.format = format;
     }
 
     if (typeof query.width === "string") {
-        encoding.width = parseInt(query.width, 10);
+        encoding.resize = {
+            resizing_type: ResizingType.fit,
+            width: parseInt(query.width, 10)
+        }
     }
-    if (typeof query.height === "string") {
-        encoding.height = parseInt(query.height, 10);
+
+    if (encoding.resize && typeof query.height === "string") {
+        encoding.resize.height = parseInt(query.height, 10);
     }
+
+    if (encoding.resize && typeof query.enlarge === "string") {
+        encoding.resize.enlarge = query.enlarge === '1' ? '1' : '0'
+    }
+
+    if (encoding.resize && typeof query.extend === "string") {
+        encoding.resize.extend = query.extend === '1' ? '1' : '0'
+    }
+
+    const resizing_type = query.resizing_type ?? ''
+    if (encoding.resize && isValidResizeType(resizing_type)) {
+        encoding.resize.resizing_type = resizing_type;
+    }
+
     if (typeof query.quality === "string") {
         encoding.quality = parseInt(query.quality, 10);
     }
 
-    if (isCodec(query.encode)) {
-        encoding.encode = query.encode;
+    const md5 = crypto.createHash('md5').update(JSON.stringify(encoding)).digest("hex") + '.' + encoding.format
+
+    const cachePath = path.join(__dirname, '..', 'cache', md5);
+    if (existsSync(cachePath)) {
+        res.sendFile(cachePath)
+        return
     }
-
-
-    const md5 = crypto.createHash('md5').update(JSON.stringify(encoding)).digest("hex")
-
-    let found = false
-    validFiles.every(validFile => {
-        const cachePath = path.join(__dirname, '..', 'cache', md5 + validFile);
-        if (existsSync(cachePath)) {
-            res.sendFile(cachePath)
-            found = true
-            return false
-        }
-        return true
-    })
-
-
-    if (found) return
-
 
     try {
         const filePath = await throttler.callFunction(() => compress(encoding, md5))
@@ -67,6 +77,10 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
     }
 }
 
-function isCodec(encode: any): encode is Codecs {
-    return typeof encode === "string" && Object.values(Codecs).includes(encode as Codecs)
+function isFormat(format: any): format is Formats {
+    return typeof format === "string" && Object.values(Formats).includes(format as Formats)
+}
+
+function isValidResizeType(size: any): size is ResizingType {
+    return typeof size === "string" && Object.values(ResizingType).includes(size as ResizingType)
 }

@@ -12,8 +12,10 @@ const app = express();
 app.set("views", path.join(__dirname, "views", "pages"));
 app.set("view engine", "ejs");
 
-import { Breadcrumb, validFiles } from "./types";
+import { Breadcrumb, Formats } from "./types";
 import validateFile from "./validateFile";
+
+const validFiles = Object.values(Formats).map(f => '.' + f)
 
 app.get("/*", async (req: Request, res: Response) => {
     const reqPath = decodeURI(req.path)

@@ -9,15 +9,31 @@ import fetch from "node-fetch";
 
 export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        // const filePath = path.join(__dirname, '..', 'media', encodeOptions.path);
-        const cachePath = path.join(__dirname, '..', 'cache', md5 + '.jpg');
-
+        const cachePath = path.join(__dirname, '..', 'cache', md5);
         try {
-            console.log(`Compresion start: ${encodeOptions.path}`)
-            // const url = `imgproxy:8080/insecure/plain/local://${encodeOptions.path}`
-            // const url = `http://imgproxy:8080/insecure/rs:fit:300/plain/local:///photo.jpg`
-            const url = `http://imgproxy:8080/insecure/rs:fit:300/plain/local://${encodeOptions.path}`
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            const { resize, format, path, quality } = encodeOptions
+            console.log(`Compresion start: ${path}`)
+            // const url = `http://imgproxy:8080/insecure/resize:fill:300:1000:0/bg:00FF00/plain/local://${path}`
+
+            let urlParams = ''
+            if (resize) {
+                let height = resize.height ? `:${resize.height}` : ''
+                if (height !== '') {
+                    const enlarge = resize.enlarge ? `${resize.enlarge}` : '0'
+                    const extend = resize.extend ? `${resize.extend}` : '0'
+                    height += `:${enlarge}:${extend}`
+                }
+
+                urlParams += `resize:${resize.resizing_type}:${resize.width}${height}/`
+            }
+
+            urlParams += 'bg:0:100:255/'
+
+            if (quality) {
+                urlParams += `quality:${quality}/`
+            }
+
+            const url = `http://imgproxy:8080/insecure/${urlParams}plain/local://${path}@${format}`
 
             console.log({ url })
             const streamPipeline = promisify(pipeline);
@@ -29,11 +45,8 @@ export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
 
             await streamPipeline(response.body, createWriteStream(cachePath));
 
-
-            // curl imgproxy:8080/insecure/rs:fit:300:200:no:0/plain/local:///photo.jpg
-            // await fs.writeFile(`${cachePath}.${extension}`, binary);
             // tslint:disable-next-line:no-console
-            console.log(`Compresion completed: ${encodeOptions.path}`)
+            console.log(`Compresion completed: ${path}`)
             resolve(`${cachePath}`)
         } catch (e) {
             // tslint:disable-next-line:no-console
