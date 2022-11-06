@@ -5,7 +5,8 @@
     <div class="ratio ratio-16x9">
       <div class="hoverImageMouse">
         <a href="<%= `${appUrl}${path}/${file.name}` %>" target="_blank">
-          <img src="<%= `${appUrl}${path}/${file.name}` %>?width=300&format=webp"
+          <img
+            src="<%= `${appUrl}${path}/${file.name}` %>?width=300&height=168resizing_type=fit&extend=1&enlarge=1&background_rgb=FFFFFF&format=webp&quality=25"
             class="rounded img-fluid spinnerWhileLoad" alt="<%= file.name %>" />
         </a>
       </div>

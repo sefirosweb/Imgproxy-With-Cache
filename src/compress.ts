@@ -13,7 +13,6 @@ export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
         try {
             const { resize, format, path, quality } = encodeOptions
             console.log(`Compresion start: ${path}`)
-            // const url = `http://imgproxy:8080/insecure/resize:fill:300:1000:0/bg:00FF00/plain/local://${path}`
 
             let urlParams = ''
             if (resize) {
@@ -25,9 +24,13 @@ export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
                 }
 
                 urlParams += `resize:${resize.resizing_type}:${resize.width}${height}/`
-            }
 
-            urlParams += 'bg:0:100:255/'
+                if (!resize.background) {
+                    urlParams += `bg:255:255:255/`
+                } else {
+                    urlParams += `bg:${resize.background.red}:${resize.background.green}:${resize.background.blue}/`
+                }
+            }
 
             if (quality) {
                 urlParams += `quality:${quality}/`

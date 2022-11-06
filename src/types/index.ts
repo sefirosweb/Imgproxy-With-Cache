@@ -18,6 +18,11 @@ export enum ResizingType {
     auto = 'auto',
 }
 
+export type BackgroundRGB = {
+    red: string,
+    green: string,
+    blue: string,
+}
 
 export type Resize = {
     resizing_type: ResizingType,
@@ -25,6 +30,7 @@ export type Resize = {
     height?: number
     enlarge?: '1' | '0'
     extend?: '1' | '0'
+    background?: BackgroundRGB
 }
 
 export type EncodeOptions = {

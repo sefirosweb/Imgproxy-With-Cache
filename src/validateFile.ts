@@ -2,7 +2,7 @@ import { Response } from "express"
 import { existsSync } from "fs"
 import crypto from "crypto";
 import compress from "./compress"
-import { Formats, EncodeOptions, ResizingType } from "./types"
+import { Formats, EncodeOptions, ResizingType, BackgroundRGB } from "./types"
 import path from "path";
 import dotenv from "dotenv";
 import Semaphore from "./semaphore";
@@ -56,6 +56,11 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
         encoding.resize.resizing_type = resizing_type;
     }
 
+    const rgb = getRGB(query?.background_rgb);
+    if (encoding.resize && rgb) {
+        encoding.resize.background = rgb;
+    }
+
     if (typeof query.quality === "string") {
         encoding.quality = parseInt(query.quality, 10);
     }
@@ -63,6 +68,7 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
     const md5 = crypto.createHash('md5').update(JSON.stringify(encoding)).digest("hex") + '.' + encoding.format
 
     const cachePath = path.join(__dirname, '..', 'cache', md5);
+
     if (existsSync(cachePath)) {
         res.sendFile(cachePath)
         return
@@ -83,4 +89,29 @@ function isFormat(format: any): format is Formats {
 
 function isValidResizeType(size: any): size is ResizingType {
     return typeof size === "string" && Object.values(ResizingType).includes(size as ResizingType)
+}
+
+function getRGB(rgb: any): BackgroundRGB | false {
+    if (typeof rgb !== "string") return false
+
+    const newRGB = hexToRgb(rgb)
+
+    if (!newRGB) return false;
+
+    const background_rgb: BackgroundRGB = {
+        blue: newRGB.b.toString(),
+        red: newRGB.r.toString(),
+        green: newRGB.g.toString()
+    }
+
+    return background_rgb;
+}
+
+function hexToRgb(hex: string) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
 }
