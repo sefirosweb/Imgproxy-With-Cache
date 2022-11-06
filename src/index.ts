@@ -1,7 +1,7 @@
 import path from "path";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
-import { readdirSync, existsSync, lstatSync } from 'fs';
+import { readdirSync, existsSync, lstatSync, statSync } from 'fs';
 
 dotenv.config();
 const port = process.env.APP_PORT ?? 8080;
@@ -35,10 +35,19 @@ app.get("/*", async (req: Request, res: Response) => {
 
     const folders = readdirSync(mediaPath, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
+        .filter(dirent => !(/(^|\/)\.[^\/\.]/g).test(dirent.name))
 
     const files = readdirSync(mediaPath, { withFileTypes: true })
         .filter(dirent => !dirent.isDirectory())
         .filter(dirent => validFiles.includes(path.extname(dirent.name)))
+        .filter(dirent => !(/(^|\/)\.[^\/\.]/g).test(dirent.name))
+        .map(dirent => {
+            const newFile = {
+                ...dirent,
+                fileSize: Math.floor(statSync(mediaPath + dirent.name).size / 1024 / 1024 * 100) / 100
+            }
+            return newFile
+        })
 
     const relativePath = reqPath === '/' ? '' : reqPath
     let breadcrumbAcumulate = ''
