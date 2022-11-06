@@ -2,7 +2,7 @@
   "name": "imgproxy-with-cache",
   "version": "1.0.0",
   "description": "Media server using Imgproxy for compresion and express to cache the files compressed",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "clean": "rimraf dist/*",
     "copy-assets": "ts-node tools/copyAssets",

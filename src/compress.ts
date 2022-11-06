@@ -1,17 +1,18 @@
-import path from "path";
 import { createWriteStream } from 'fs';
 // @ts-ignore
 import { EncodeOptions } from "./types";
 import { promisify } from "util";
 import { pipeline } from "stream";
 import fetch from "node-fetch";
+import { join } from 'path';
 
 
 export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        const cachePath = path.join(__dirname, '..', 'cache', md5);
+        const cachePath = join(__dirname, '..', 'cache', md5);
         try {
             const { resize, format, path, quality } = encodeOptions
+            // tslint:disable-next-line:no-console
             console.log(`Compresion start: ${path}`)
 
             let urlParams = ''
@@ -37,8 +38,8 @@ export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
             }
 
             const url = `http://imgproxy:8080/insecure/${urlParams}plain/local://${path}@${format}`
-
-            console.log({ url })
+            // tslint:disable-next-line:no-console
+            console.log('Request to: ' + url)
             const streamPipeline = promisify(pipeline);
             const response = await fetch(url);
 

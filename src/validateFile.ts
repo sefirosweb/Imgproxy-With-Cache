@@ -51,9 +51,9 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
         encoding.resize.extend = query.extend === '1' ? '1' : '0'
     }
 
-    const resizing_type = query.resizing_type ?? ''
-    if (encoding.resize && isValidResizeType(resizing_type)) {
-        encoding.resize.resizing_type = resizing_type;
+    const resizingType = query.resizing_type ?? ''
+    if (encoding.resize && isValidResizeType(resizingType)) {
+        encoding.resize.resizing_type = resizingType;
     }
 
     const rgb = getRGB(query?.background_rgb);
@@ -98,17 +98,17 @@ function getRGB(rgb: any): BackgroundRGB | false {
 
     if (!newRGB) return false;
 
-    const background_rgb: BackgroundRGB = {
+    const backgroundRGB: BackgroundRGB = {
         blue: newRGB.b.toString(),
         red: newRGB.r.toString(),
         green: newRGB.g.toString()
     }
 
-    return background_rgb;
+    return backgroundRGB;
 }
 
 function hexToRgb(hex: string) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),

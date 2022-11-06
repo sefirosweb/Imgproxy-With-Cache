@@ -12,7 +12,7 @@ services:
     environment:
       APP_URL: '${APP_URL:-http://localhost:8080}'
     volumes:
-      - './media:/home/app/media'
+      - '${MEDIA_PATH:-./media}:/home/app/media'
       - './cache:/home/app/cache'
 
   imgproxy:
@@ -20,6 +20,8 @@ services:
     container_name: imgproxy
     hostname: imgproxy
     restart: always
+    volumes:
+      - '${MEDIA_PATH:-./media}:/media'
     environment:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /media
       IMGPROXY_MAX_SRC_RESOLUTION: "9999"
