@@ -1,0 +1,25 @@
+version: '3'
+services:
+  imgproxywithcache:
+    image: "darthsim/imgproxywithcache:latest"
+    restart: always
+    container_name: imgproxywithcache
+    hostname: imgproxywithcache
+    ports:
+      - '${APP_PORT:-8080}:8080'
+    environment:
+      APP_URL: '${APP_URL:-http://localhost:8080}'
+    volumes:
+      - '${MEDIA_PATH:-./media}:/home/app/media'
+      - './cache:/home/app/cache'
+
+  imgproxy:
+    image: "darthsim/imgproxy"
+    container_name: imgproxy
+    hostname: imgproxy
+    restart: always
+    volumes:
+      - '${MEDIA_PATH:-./media}:/media'
+    environment:
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /media
+      IMGPROXY_MAX_SRC_RESOLUTION: "9999"
