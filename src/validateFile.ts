@@ -13,7 +13,7 @@ const throttler = new Semaphore(concurrent);
 
 export default async (reqPath: string, query: any, res: Response, mediaPath: string) => {
     if (!existsSync(mediaPath)) {
-        res.redirect(301, '/')
+        res.redirect(302, '/')
         return
     }
 

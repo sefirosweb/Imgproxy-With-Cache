@@ -29,7 +29,7 @@ app.get("/*", async (req: Request, res: Response) => {
     }
 
     if (!existsSync(mediaPath) || !lstatSync(mediaPath).isDirectory()) {
-        res.redirect(301, '/')
+        res.redirect(302, '/')
         return
     }
 
