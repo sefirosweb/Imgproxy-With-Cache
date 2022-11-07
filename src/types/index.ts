@@ -7,8 +7,8 @@ export enum Formats {
     ico = 'ico',
     bmp = 'bmp',
     tiff = 'tiff',
+    pdf = 'pdf',
 }
-
 
 export enum ResizingType {
     fit = 'fit',

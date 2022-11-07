@@ -22,6 +22,12 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
         return
     }
 
+    if (path.extname(reqPath) === '.pdf') {
+        const fileError = path.join(__dirname, 'views', 'pdf-file.png');
+        res.sendFile(fileError)
+        return
+    }
+
     const encoding: EncodeOptions = {
         path: reqPath,
         format: Formats.jpg
