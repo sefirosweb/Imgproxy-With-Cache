@@ -1,17 +1,23 @@
-version: '3'
+version: "3"
 services:
   imgproxywithcache:
-    image: "sefirosweb/imgproxywithcache:latest"
+    image: "ghcr.io/sefirosweb/imgproxywithcache:latest"
     restart: always
     container_name: imgproxywithcache
     hostname: imgproxywithcache
     ports:
-      - '${APP_PORT:-8080}:8080'
+      - "${APP_PORT:-8080}:8080"
     environment:
-      APP_URL: '${APP_URL:-http://localhost:8080}'
+      APP_URL: "${APP_URL:-http://localhost:8080}"
+      USE_AWS_S3: "${USE_AWS_S3:-false}"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_BUCKET_NAME: "${AWS_BUCKET_NAME}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+
     volumes:
-      - '${MEDIA_PATH:-./media}:/home/app/media'
-      - './cache:/home/app/cache'
+      - "${MEDIA_PATH:-./media}:/home/app/media"
+      - "./cache:/home/app/cache"
 
   imgproxy:
     image: "darthsim/imgproxy"
@@ -19,7 +25,11 @@ services:
     hostname: imgproxy
     restart: always
     volumes:
-      - '${MEDIA_PATH:-./media}:/media'
+      - "${MEDIA_PATH:-./media}:/media"
     environment:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /media
       IMGPROXY_MAX_SRC_RESOLUTION: "9999"
+      IMGPROXY_USE_S3: "${USE_AWS_S3:-false}"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
