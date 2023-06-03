@@ -5,13 +5,14 @@ import { promisify } from "util";
 import { pipeline } from "stream";
 import fetch from "node-fetch";
 import { join } from 'path';
+import { aws_bucket_name, use_s3 } from './config';
 
 
 export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
     return new Promise(async (resolve, reject) => {
         const cachePath = join(__dirname, '..', 'cache', md5);
         try {
-            const { resize, format, path, quality } = encodeOptions
+            const { resize, format, path, quality, background } = encodeOptions
             // tslint:disable-next-line:no-console
             console.log(`Compresion start: ${path}`)
 
@@ -25,19 +26,28 @@ export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
                 }
 
                 urlParams += `resize:${resize.resizing_type}:${resize.width}${height}/`
+            }
 
-                if (!resize.background) {
-                    urlParams += `bg:255:255:255/`
-                } else {
-                    urlParams += `bg:${resize.background.red}:${resize.background.green}:${resize.background.blue}/`
-                }
+            if (background) {
+                urlParams += `bg:${background.red}:${background.green}:${background.blue}/`
             }
 
             if (quality) {
                 urlParams += `quality:${quality}/`
             }
 
-            const url = `http://imgproxy:8080/insecure/${urlParams}plain/local://${path}@${format}`
+            let url = ''
+            if (use_s3) {
+                let s3Path = path
+                s3Path = s3Path.replace(/\/+/g, "/")
+                if (s3Path[0] === "/") {
+                    s3Path = s3Path.slice(1);
+                }
+
+                url = `http://imgproxy:8080/insecure/${urlParams}plain/s3://${aws_bucket_name}/${s3Path}@${format}`
+            } else {
+                url = `http://imgproxy:8080/insecure/${urlParams}plain/local://${path}@${format}`
+            }
             // tslint:disable-next-line:no-console
             console.log('Request to: ' + url)
             const streamPipeline = promisify(pipeline);

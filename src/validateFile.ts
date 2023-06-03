@@ -6,20 +6,36 @@ import { Formats, EncodeOptions, ResizingType, BackgroundRGB } from "./types"
 import path from "path";
 import dotenv from "dotenv";
 import Semaphore from "./semaphore";
+import { use_s3 } from "./config";
+import { downloadS3File } from "./s3";
+import { Readable } from "stream";
 
 dotenv.config();
 const concurrent = process.env.MAX_CONCURRENT_COMPRESION ? parseInt(process.env.MAX_CONCURRENT_COMPRESION, 10) : 1;
 const throttler = new Semaphore(concurrent);
 
 export default async (reqPath: string, query: any, res: Response, mediaPath: string) => {
-    if (!existsSync(mediaPath)) {
-        res.redirect(302, '/')
+    if (reqPath === '/favicon.ico') {
+        res.status(404).send()
+        return
+    }
+
+    if (!existsSync(mediaPath) && !use_s3) {
+        res.status(404).send()
         return
     }
 
     if (Object.keys(query).length === 0) {
-        res.sendFile(mediaPath)
-        return
+        if (!use_s3) {
+            return res.sendFile(mediaPath)
+        }
+
+        const fileS3 = await downloadS3File(reqPath);
+        if (!fileS3) {
+            return res.status(404).send()
+        }
+
+        return (fileS3.Body as Readable).pipe(res);
     }
 
     if (path.extname(reqPath) === '.pdf') {
@@ -63,8 +79,8 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
     }
 
     const rgb = getRGB(query?.background_rgb);
-    if (encoding.resize && rgb) {
-        encoding.resize.background = rgb;
+    if (rgb) {
+        encoding.background = rgb;
     }
 
     if (typeof query.quality === "string") {

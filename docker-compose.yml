@@ -6,22 +6,32 @@ services:
     hostname: app_imgproxy
     restart: always
     ports:
-      - '${APP_PORT:-8080}:8080'
-      - '${DEBUG_PORT:-9229}:9229'
+      - "${APP_PORT:-8080}:8080"
+      - "${DEBUG_PORT:-9229}:9229"
     environment:
-      APP_URL: '${APP_URL:-http://localhost:8080}'
+      APP_URL: "${APP_URL:-http://localhost:8080}"
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      USE_AWS_S3: "${USE_AWS_S3:-false}"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_BUCKET_NAME: "${AWS_BUCKET_NAME}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+
     volumes:
-      - './:/home/app'
+      - "./:/home/app"
     working_dir: /home/app
-    entrypoint: [ "tail", "-f", "/dev/null" ]
+    entrypoint: ["tail", "-f", "/dev/null"]
 
   imgproxy:
     image: "darthsim/imgproxy"
     container_name: imgproxy
     hostname: imgproxy
     volumes:
-      - './media:/media'
+      - "./media:/media"
     environment:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /media
       IMGPROXY_MAX_SRC_RESOLUTION: "9999"
+      IMGPROXY_USE_S3: "${USE_AWS_S3:-false}"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"

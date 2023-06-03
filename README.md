@@ -10,7 +10,7 @@ To upload the image files you must provide it manually (via ftp or own developme
 
 Example:
 
-https://yourdomain.com/path/image.jpg?width=300&height=168resizing_type=fit&extend=1&enlarge=1&background_rgb=FFFFFF&format=webp&quality=25
+https://yourdomain.com/path/image.jpg?width=300&height=168resizing_type=fit&extend=1&enlarge=1&background_rgb=FF55FF&format=webp&quality=25
 
 This example is resized to 300 x 168 (ratio 16x9) + converted to webp + reduced quality + added background white if original image don't have same ratio
 
@@ -34,6 +34,20 @@ Current parameters included:
 - enlarge `default: 0`
 - extend `default: 0`
 - background_rgb `default: FFFFFF`
+
+## Added support to AWS S3!
+
+Now you can use Aws S3 to store images and this can make a proxy to resize and optimize the images
+
+To use it only need to add enviorement variables:
+
+```env
+USE_AWS_S3=true
+AWS_REGION=us-east-1
+AWS_BUCKET_NAME=your-bucket-name
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+```
 
 ## Deploy to production
 

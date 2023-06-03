@@ -30,7 +30,6 @@ export type Resize = {
     height?: number
     enlarge?: '1' | '0'
     extend?: '1' | '0'
-    background?: BackgroundRGB
 }
 
 export type EncodeOptions = {
@@ -38,6 +37,7 @@ export type EncodeOptions = {
     format: Formats
     resize?: Resize
     quality?: number
+    background?: BackgroundRGB
 }
 
 export type Breadcrumb = {
