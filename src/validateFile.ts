@@ -6,7 +6,7 @@ import { Formats, EncodeOptions, ResizingType, BackgroundRGB } from "./types"
 import path from "path";
 import dotenv from "dotenv";
 import Semaphore from "./semaphore";
-import { use_s3 } from "./config";
+import { useS3 } from "./config";
 import { downloadS3File } from "./s3";
 import { Readable } from "stream";
 
@@ -20,13 +20,13 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
         return
     }
 
-    if (!existsSync(mediaPath) && !use_s3) {
+    if (!existsSync(mediaPath) && !useS3) {
         res.status(404).send()
         return
     }
 
     if (Object.keys(query).length === 0) {
-        if (!use_s3) {
+        if (!useS3) {
             return res.sendFile(mediaPath)
         }
 

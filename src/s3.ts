@@ -1,9 +1,9 @@
 import { S3Client, ListObjectsCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { aws_region, aws_bucket_name } from './config'
+import { awsRegion, awsBucketName } from './config'
 import { foldersFileType, validFiles } from "./getFiltes";
 import path from "path";
 
-const s3 = new S3Client({ region: aws_region });
+const s3 = new S3Client({ region: awsRegion });
 
 
 export const downloadS3File = async (fileToSearch: string) => {
@@ -15,13 +15,12 @@ export const downloadS3File = async (fileToSearch: string) => {
 
   try {
     const command = new GetObjectCommand({
-      Bucket: aws_bucket_name,
+      Bucket: awsBucketName,
       Key: file,
     });
     const response = await s3.send(command);
     return response;
   } catch (e) {
-    console.log(e)
     return null
   }
 }
@@ -44,7 +43,7 @@ export const listBucketObjects = async (folderToSearch: string): Promise<folders
 
   while (isTruncated) {
     const command = new ListObjectsCommand({
-      Bucket: aws_bucket_name,
+      Bucket: awsBucketName,
       Prefix: folder,
       Marker: nextMarker,
       Delimiter: "/"

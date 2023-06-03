@@ -5,7 +5,7 @@ import { promisify } from "util";
 import { pipeline } from "stream";
 import fetch from "node-fetch";
 import { join } from 'path';
-import { aws_bucket_name, use_s3 } from './config';
+import { awsBucketName, useS3 } from './config';
 
 
 export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
@@ -37,14 +37,14 @@ export default (encodeOptions: EncodeOptions, md5: string): Promise<string> => {
             }
 
             let url = ''
-            if (use_s3) {
+            if (useS3) {
                 let s3Path = path
                 s3Path = s3Path.replace(/\/+/g, "/")
                 if (s3Path[0] === "/") {
                     s3Path = s3Path.slice(1);
                 }
 
-                url = `http://imgproxy:8080/insecure/${urlParams}plain/s3://${aws_bucket_name}/${s3Path}@${format}`
+                url = `http://imgproxy:8080/insecure/${urlParams}plain/s3://${awsBucketName}/${s3Path}@${format}`
             } else {
                 url = `http://imgproxy:8080/insecure/${urlParams}plain/local://${path}@${format}`
             }
