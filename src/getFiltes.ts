@@ -1,16 +1,16 @@
 import { readdirSync, statSync, existsSync, lstatSync } from 'fs';
 import path from "path";
 import { Formats } from "./types";
-import { use_s3 } from "./config";
+import { useS3 } from "./config";
 import { listBucketObjects } from './s3';
 
 export const validFiles = Object.values(Formats).map(f => '.' + f)
 export type foldersFileType = {
-    folders: Array<string>,
-    files: Array<{
+    folders: string[],
+    files: {
         fileSize: number,
         name: string,
-    }>,
+    }[],
 }
 
 const getLocalData = (mediaPath: string): foldersFileType => {
@@ -38,7 +38,7 @@ const getLocalData = (mediaPath: string): foldersFileType => {
 }
 
 export const getDataFromFolder = async (mediaPath: string, reqPath: string): Promise<foldersFileType> => {
-    if (use_s3) {
+    if (useS3) {
         return await listBucketObjects(reqPath)
     }
 
@@ -46,7 +46,7 @@ export const getDataFromFolder = async (mediaPath: string, reqPath: string): Pro
 }
 
 export const exisPath = (mediaPath: string) => {
-    if (use_s3) {
+    if (useS3) {
         return true;
     }
 

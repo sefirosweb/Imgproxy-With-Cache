@@ -74,7 +74,7 @@ You can debug with vscode, default port to listen: 9229
 ### Upload to docker
 
 1. docker build -f docker/Dockerfile -t sefirosweb/imgproxywithcache:latest .
-2. docker tag sefirosweb/imgproxywithcache:latest sefirosweb/imgproxywithcache:1.0.0
+2. docker tag sefirosweb/imgproxywithcache:latest sefirosweb/imgproxywithcache:1.1.0
 3. docker push sefirosweb/imgproxywithcache:latest
 
 ### TODOS
