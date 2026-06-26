@@ -2,14 +2,17 @@ jest.mock("dotenv", () => ({ config: jest.fn() }));
 jest.mock("../src/config", () => ({ useS3: false }));
 jest.mock("../src/compress");
 jest.mock("../src/s3", () => ({ downloadS3File: jest.fn() }));
+jest.mock("../src/overlay", () => ({ parseOverlayQuery: jest.fn() }));
 jest.mock("fs");
 
 import { existsSync } from "fs";
 import compress from "../src/compress";
+import { parseOverlayQuery } from "../src/overlay";
 import validateFile from "../src/validateFile";
 
 const mockExistsSync = existsSync as unknown as jest.Mock;
 const mockCompress = compress as unknown as jest.Mock;
+const mockParseOverlay = parseOverlayQuery as jest.Mock;
 
 const makeRes = () => {
     const res: Record<string, jest.Mock> = {};
@@ -122,5 +125,26 @@ describe("validateFile query -> EncodeOptions + cache key", () => {
         await run("/a.jpg", { width: "300" }).done;
         await run("/a.jpg", { width: "300" }).done;
         expect(mockCompress.mock.calls[0][1]).toBe(mockCompress.mock.calls[1][1]);
+    });
+});
+
+describe("validateFile overlay", () => {
+    const overlay = { text: "1/4", position: "soea", margin: 12, opacity: 1, size: 28, color: "FFFFFF", bg: "000000" };
+
+    it("attaches a parsed overlay to the encoding and changes the cache key", async () => {
+        mockParseOverlay.mockReturnValue(overlay);
+        cacheMiss();
+        mockCompress.mockResolvedValue("/out/cache/x.jpg");
+        await run("/a.jpg", { width: "300", overlay_text: "1/4" }).done;
+
+        const [encoding, keyWith] = mockCompress.mock.calls[0];
+        expect(encoding.overlay).toEqual(overlay);
+
+        // a different overlay must yield a different cache key
+        mockCompress.mockClear();
+        mockParseOverlay.mockReturnValue({ ...overlay, text: "2/4" });
+        cacheMiss();
+        await run("/a.jpg", { width: "300", overlay_text: "2/4" }).done;
+        expect(mockCompress.mock.calls[0][1]).not.toBe(keyWith);
     });
 });

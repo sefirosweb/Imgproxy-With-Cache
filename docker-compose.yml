@@ -1,7 +1,8 @@
-version: "3"
 services:
   app_imgproxy:
-    image: "node:18.12-bullseye"
+    image: "node:18-bullseye"
+    # Text overlays need a system font (image overlays don't). Install it once in dev:
+    #   docker compose exec -u root app_imgproxy apt-get update && apt-get install -y fonts-dejavu-core
     container_name: app_imgproxy
     hostname: app_imgproxy
     restart: always
@@ -12,10 +13,10 @@ services:
       APP_URL: "${APP_URL:-http://localhost:8080}"
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       USE_AWS_S3: "${USE_AWS_S3:-false}"
-      AWS_REGION: "${AWS_REGION}"
-      AWS_BUCKET_NAME: "${AWS_BUCKET_NAME}"
-      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
-      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      AWS_BUCKET_NAME: "${AWS_BUCKET_NAME:-}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
 
     volumes:
       - "./:/home/app"
@@ -32,6 +33,6 @@ services:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /media
       IMGPROXY_MAX_SRC_RESOLUTION: "9999"
       IMGPROXY_USE_S3: "${USE_AWS_S3:-false}"
-      AWS_REGION: "${AWS_REGION}"
-      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
-      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"

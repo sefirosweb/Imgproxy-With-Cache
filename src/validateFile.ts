@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import Semaphore from "./semaphore";
 import { useS3 } from "./config";
 import { downloadS3File } from "./s3";
+import { parseOverlayQuery } from "./overlay";
 import { Readable } from "stream";
 
 dotenv.config();
@@ -85,6 +86,11 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
 
     if (typeof query.quality === "string") {
         encoding.quality = parseInt(query.quality, 10);
+    }
+
+    const overlay = parseOverlayQuery(query)
+    if (overlay) {
+        encoding.overlay = overlay
     }
 
     const md5 = crypto.createHash('md5').update(JSON.stringify(encoding)).digest("hex") + '.' + encoding.format

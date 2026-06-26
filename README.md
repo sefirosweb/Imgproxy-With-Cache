@@ -35,6 +35,31 @@ Current parameters included:
 - extend `default: 0`
 - background_rgb `default: FFFFFF`
 
+## Overlay (dynamic text or image)
+
+You can stamp a **dynamic text label** (e.g. `1/4`) or a **custom image** on top of the result. imgproxy's free version can't render arbitrary text (`watermark_text` / `watermark_url` are Pro-only), so the overlay is composited with [sharp](https://sharp.pixelplumbing.com/) *after* imgproxy resizes — and it is cached like any other transform.
+
+Add `overlay_text` **or** `overlay_image` to the query (text wins if both are sent):
+
+- overlay_text — the text to draw, e.g. `overlay_text=1/4` (URL-encode `/` as `%2F` if your client needs it)
+- overlay_image — a base64-encoded image | max ~64KB
+- overlay_position `ce | no | so | ea | we | noea | nowe | soea | sowe` | `default: soea` (bottom-right). `ce` centers it.
+- overlay_margin — px from the edge of the final image | `default: 12`
+- overlay_opacity — `0`–`1` | `default: 1`
+- overlay_size — text font size in px | `default: 28` (max 256)
+- overlay_color — text colour, 6-hex without `#` | `default: FFFFFF`
+- overlay_bg — text box colour (6-hex) or `none` for borderless text | `default: 000000` (semi-transparent box)
+- overlay_scale — image overlay size as a fraction of the width, `0`–`1` (image overlays only)
+
+Examples:
+
+    /image.png?width=500&overlay_text=1/4
+    /image.png?width=500&overlay_text=2/4&overlay_position=ce&overlay_bg=none&overlay_opacity=0.6
+    /image.png?width=500&overlay_text=NUEVO&overlay_position=nowe&overlay_size=48&overlay_color=FF0000
+    /image.png?width=500&overlay_image=<base64>&overlay_position=noea&overlay_scale=0.2
+
+> **Text overlays need a system font.** The production Docker image installs `fonts-dejavu-core`. For local dev inside the container install it once: `docker compose exec -u root app_imgproxy apt-get update && apt-get install -y fonts-dejavu-core`. Image overlays don't need a font.
+
 ## Added support to AWS S3!
 
 Now you can use Aws S3 to store images and this can make a proxy to resize and optimize the images

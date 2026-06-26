@@ -4,7 +4,7 @@
 
 A small Express + TypeScript media server that browses a media tree and serves on-the-fly resized/optimized images. Resize/transcode work is delegated to a **darthsim/imgproxy sidecar** (invoked over HTTP, not via `docker exec`); transformed bytes are streamed to an on-disk **cache** so repeat requests are served straight from disk. The same server-rendered EJS listing UI doubles as a live demo of the cache/resize pipeline. Media sources can be the local filesystem or AWS S3.
 
-**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Jest (ts-jest) · Docker + docker-compose · GitHub Actions (CI + GHCR publish). Current version: **1.1.2**.
+**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Jest (ts-jest) · sharp (image overlays) · Docker + docker-compose · GitHub Actions (CI + GHCR publish). Current version: **1.1.2**.
 
 > Docker is effectively required for development and runtime because imgproxy runs as a sibling container and the app calls it at the hard-coded hostname `imgproxy:8080`. There is no standalone (non-Docker) mode for the transform path.
 
@@ -33,7 +33,8 @@ The Node app and imgproxy share the same media volume and AWS env vars over the 
 | [src/mediaPath.ts](src/mediaPath.ts) | `mediaRoot` + `resolveMediaPath(reqPath)` — resolve a request path inside the media root or return `null`. The **path-traversal guard**, used by `index.ts`. |
 | [src/config.ts](src/config.ts) | `dotenv.config()` + exported config constants (`port`, `appUrl`, `useS3`, `aws*`). Fail-fast S3 credential guard (throws at startup if `USE_AWS_S3=true` and any `AWS_*` missing). |
 | [src/validateFile.ts](src/validateFile.ts) | Request validation, query→`EncodeOptions`, MD5 cache key, cache-hit short-circuit, placeholder/error dispatch. Owns the module-level `Semaphore` throttler. Helpers: `isFormat`, `isValidResizeType`, `getRGB`, `hexToRgb`. Default export `validateFile`. |
-| [src/compress.ts](src/compress.ts) | Builds the imgproxy URL, fetches transformed bytes via node-fetch, streams to cache file. Default export `compress`. |
+| [src/compress.ts](src/compress.ts) | Builds the imgproxy URL, fetches transformed bytes via node-fetch, streams to cache (or buffers + runs the sharp overlay when one is requested, then writes). Default export `compress`. |
+| [src/overlay.ts](src/overlay.ts) | Overlay feature: `parseOverlayQuery` (overlay_* params), `buildTextSvg` (text→SVG), `computePlacement`, and `applyOverlay` (sharp composite + re-encode). Imports `sharp`. |
 | [src/getFiltes.ts](src/getFiltes.ts) | **(misspelled — should be `getFiles`)** Directory-browsing layer. Exports `validFiles`, type `foldersFileType`, `getDataFromFolder`, **`exisPath`** (also misspelled). Local backend `getLocalData` (not exported). Dispatches to S3 when `useS3`. |
 | [src/s3.ts](src/s3.ts) | AWS S3 read path. `downloadS3File` (single object stream) and `listBucketObjects` (paginated `ListObjectsCommand`, `Delimiter '/'`). |
 | [src/semaphore.ts](src/semaphore.ts) | `Semaphore` class — concurrency throttle that gates `compress`. |
@@ -90,6 +91,10 @@ All transforms are driven by the query string on a file request, parsed in [vali
 
 Zero query params ⇒ original file served unchanged. **Any** non-empty query (even an unknown key) bypasses the short-circuit and triggers a transform (default `jpg`). No clamping/validation on width/height/quality — `NaN` and arbitrarily large values flow straight into the imgproxy URL.
 
+### Overlay params (composited with sharp, not imgproxy)
+
+Free imgproxy can't render text or per-request watermarks (`watermark_text`/`watermark_url` are Pro). So overlays are composited in [src/overlay.ts](src/overlay.ts) **after** imgproxy resizes, then cached. Trigger with `overlay_text` (dynamic text) **or** `overlay_image` (base64; text wins if both). Style: `overlay_position` (`ce no so ea we noea nowe soea sowe`, default `soea`), `overlay_margin` (px, def 12), `overlay_opacity` (0–1), `overlay_size` (px, def 28, **clamped ≤256**), `overlay_color` (6-hex), `overlay_bg` (6-hex or `none`), `overlay_scale` (0–1, image only). All parsed values land in `EncodeOptions.overlay` → the md5 cache key. `overlay_image` is **rejected over ~64KB**; sharp decode is guarded by `limitInputPixels`.
+
 ## Development workflow
 
 Docker is required (imgproxy sidecar + the `imgproxy` hostname). The dev app container **idles** via `entrypoint: ["tail","-f","/dev/null"]` — you exec in and start the app yourself.
@@ -118,7 +123,7 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 
 > Views resolve relative to `__dirname` of the **compiled** output: `<dist>/views/pages`. EJS rendering and the placeholder PNGs only work after `copy-assets` (or via ts-node in dev).
 
-**Docker** (`docker build -f docker/Dockerfile .`): two stages, both `node:18.12-bullseye`. Stage `appbuild` runs `npm ci` + `npm run build` (devDeps like TypeScript available there). Final stage sets `NODE_ENV=production`, copies `dist`, `package*.json`, and `start-container`, runs **`npm ci --omit=dev`** (reproducible install, runtime deps only), `EXPOSE 8080`, `ENTRYPOINT ["start-container"]`. `start-container` **`exec`s** node so it becomes PID 1 and receives `SIGTERM`/`SIGINT` for graceful shutdown.
+**Docker** (`docker build -f docker/Dockerfile .`): two stages, both `node:18-bullseye` (≥18.17, required by sharp 0.33). The runtime stage `apt-get install`s **`fonts-dejavu-core`** (sharp/SVG text overlays render blank without a font). A project `.npmrc` sets `ignore-scripts=true` (supply-chain hardening); safe because sharp 0.33 ships its binary via `optionalDependencies` (`@img/sharp-*`), not an install script. Stage `appbuild` runs `npm ci` + `npm run build` (devDeps like TypeScript available there). Final stage sets `NODE_ENV=production`, copies `dist`, `package*.json`, and `start-container`, runs **`npm ci --omit=dev`** (reproducible install, runtime deps only), `EXPOSE 8080`, `ENTRYPOINT ["start-container"]`. `start-container` **`exec`s** node so it becomes PID 1 and receives `SIGTERM`/`SIGINT` for graceful shutdown.
 
 **CI (publish)** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers **only** on `v1.*` git tags (a `v2.x` tag would not publish). `checkout@v3` → `login-action@v2` to **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) → `build-push-action@v4` (context `.`, file `docker/Dockerfile`, `push: true`). The image is **always** tagged only `ghcr.io/sefirosweb/imgproxywithcache:latest` — no version-pinned tag, `:latest` is overwritten each release (intentional: no space to keep per-version images). The README's manual `docker push` instructions use Docker-Hub-style names + version tags and are out of sync with CI.
 
@@ -149,6 +154,7 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 
 ## Gotchas & footguns
 
+- **Overlays re-encode via sharp:** the overlay branch in `compress.ts` buffers imgproxy's output and re-encodes through `applyOverlay` (passing `format`+`quality`), unlike the non-overlay branch which streams imgproxy bytes verbatim. Text overlays need a **system font** in the runtime (prod Dockerfile installs `fonts-dejavu-core`; dev container does not by default → blank text). `format=bmp`/`ico` overlays fall back to PNG bytes (sharp can't write those). Since overlay rendering changes don't change the md5 key, **clear `cache/`** after editing overlay code to see the new output.
 - **Hard-coded paths:** media root `path.join(__dirname,'..','media',reqPath)` and cache dir `path.join(__dirname,'..','cache',md5)` are not env-configurable. The cache-path join is **duplicated independently** in `validateFile.ts` and `compress.ts` — they must stay in sync.
 - **Path traversal guard:** [src/index.ts](src/index.ts) resolves the request path and returns `404` for anything that escapes the `media/` root, *before* any FS access (`sendFile`/`exisPath`/`getDataFromFolder`). This guard is the only thing confining requests to `media/` — preserve it if you refactor the routing.
 - **`NODE_TLS_REJECT_UNAUTHORIZED: "0"`** is hard-coded in the **dev** Compose only (disables all TLS cert verification for the Node process). It is absent in production — do not copy it across.
