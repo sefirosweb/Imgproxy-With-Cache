@@ -4,7 +4,7 @@
 
 A small Express + TypeScript media server that browses a media tree and serves on-the-fly resized/optimized images. Resize/transcode work is delegated to a **darthsim/imgproxy sidecar** (invoked over HTTP, not via `docker exec`); transformed bytes are streamed to an on-disk **cache** so repeat requests are served straight from disk. The same server-rendered EJS listing UI doubles as a live demo of the cache/resize pipeline. Media sources can be the local filesystem or AWS S3.
 
-**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · TSLint (deprecated) · Docker + docker-compose · GitHub Actions → GHCR. Current version: **1.1.2**.
+**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Docker + docker-compose · GitHub Actions → GHCR. Current version: **1.1.2**.
 
 > Docker is effectively required for development and runtime because imgproxy runs as a sibling container and the app calls it at the hard-coded hostname `imgproxy:8080`. There is no standalone (non-Docker) mode for the transform path.
 
@@ -41,7 +41,6 @@ The Node app and imgproxy share the same media volume and AWS env vars over the 
 | [src/views/pages/pagination.ejs](src/views/pages/pagination.ejs) | **Misnamed** — it is the actual page body (title, breadcrumb, folder grid, image grid). No pagination logic at all. |
 | [src/views/partials/gridImages.ejs](src/views/partials/gridImages.ejs) | Image-card grid; thumbnails point back at this server with imgproxy query params. |
 | [src/views/partials/head.ejs](src/views/partials/head.ejs) / [footer.ejs](src/views/partials/footer.ejs) | `<head>` (Bootstrap 5.2.2 CDN + inline CSS) / static "Copyright 2022 Sefirosweb" footer. |
-| [src/views/index.ejs](src/views/index.ejs) | **Dead/legacy** (Materialize CSS, `/guitars` link). Lives *outside* the `views/pages` render root, so it is never rendered. |
 | [tools/copyAssets.ts](tools/copyAssets.ts) | `shell.cp("-R", "src/views", "dist/")` — ships EJS templates + placeholder PNGs alongside compiled JS. Run via ts-node, outside the `tsc` `include`. |
 | [docker/Dockerfile](docker/Dockerfile) | Two-stage build (node:18.12-bullseye). |
 | [docker/start-container](docker/start-container) | Bash entrypoint → `node /home/app/dist/index.js`. |
@@ -112,21 +111,21 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 
 `npm run build` = `npm-run-all clean lint tsc copy-assets`, **sequential, in this order**:
 1. `clean` — `rimraf dist/*`
-2. `lint` — `tslint -c tslint.json -p tsconfig.json --fix` (TSLint, deprecated; **`--fix` mutates source files during the build**)
+2. `lint` — `eslint "src/**/*.ts"` (check-only; the build no longer mutates source — run `npm run lint:fix` to autofix)
 3. `tsc` — compile `src/**/*` → `dist/` (commonjs, es6, `noImplicitAny`, sourcemaps)
 4. `copy-assets` — `ts-node tools/copyAssets` → `shell.cp("-R","src/views","dist/")` (only `src/views` is shipped)
 
 > Views resolve relative to `__dirname` of the **compiled** output: `<dist>/views/pages`. EJS rendering and the placeholder PNGs only work after `copy-assets` (or via ts-node in dev).
 
-**Docker** (`docker build -f docker/Dockerfile .`): two stages, both `node:18.12-bullseye`. Stage `appbuild` runs `npm install` + `npm run build` (devDeps like TypeScript are available there). Final stage sets `NODE_ENV=production`, copies `dist`, `package*.json`, and `start-container`, runs `npm install` (note: **`npm install`, not `npm ci`** — not pinned to the lockfile), `EXPOSE 8080`, `ENTRYPOINT ["start-container"]`. `start-container` runs `node …` **without `exec`**, so Node is not PID 1 and won't receive `SIGTERM`/`SIGINT` for graceful shutdown.
+**Docker** (`docker build -f docker/Dockerfile .`): two stages, both `node:18.12-bullseye`. Stage `appbuild` runs `npm ci` + `npm run build` (devDeps like TypeScript available there). Final stage sets `NODE_ENV=production`, copies `dist`, `package*.json`, and `start-container`, runs **`npm ci --omit=dev`** (reproducible install, runtime deps only), `EXPOSE 8080`, `ENTRYPOINT ["start-container"]`. `start-container` **`exec`s** node so it becomes PID 1 and receives `SIGTERM`/`SIGINT` for graceful shutdown.
 
-**CI** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers **only** on `v1.*` git tags (a `v2.x` tag would not publish). `checkout@v3` → `login-action@v2` to **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) → `build-push-action@v4` (context `.`, file `docker/Dockerfile`, `push: true`). The image is **always** tagged only `ghcr.io/sefirosweb/imgproxywithcache:latest` — no version-pinned tag, `:latest` is overwritten each release. (The job name says "Docker Hub" but it pushes to GHCR; the README's manual `docker push` instructions use Docker-Hub-style names + version tags and are out of sync with CI.)
+**CI** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers **only** on `v1.*` git tags (a `v2.x` tag would not publish). `checkout@v3` → `login-action@v2` to **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) → `build-push-action@v4` (context `.`, file `docker/Dockerfile`, `push: true`). The image is **always** tagged only `ghcr.io/sefirosweb/imgproxywithcache:latest` — no version-pinned tag, `:latest` is overwritten each release (intentional: no space to keep per-version images). The README's manual `docker push` instructions use Docker-Hub-style names + version tags and are out of sync with CI.
 
 **Production run:** `docker compose -f production/docker-compose.yml up -d`.
 
 ## Conventions
 
-- **TypeScript / lint:** TSLint (`tslint:recommended`, deprecated). `// tslint:disable-next-line:no-console` precedes the `console.log`s. One `// @ts-ignore` on the `EncodeOptions` import in `compress.ts`. `tsconfig` is loose: no `strict`, only `noImplicitAny`; `paths` maps `*` → `node_modules/*`; no `exclude`.
+- **TypeScript / lint:** ESLint (`eslint:recommended` + `plugin:@typescript-eslint/recommended`) via `.eslintrc.json`; `no-console` and `@typescript-eslint/no-explicit-any` are turned **off** (the code logs to console intentionally and uses `any` for query params). `npm run lint` is **check-only** and runs inside `build`, so the build never mutates source; use `npm run lint:fix` to autofix manually. `tsconfig` has **`strict: true`**; `paths` maps `*` → `node_modules/*`; no `exclude`.
 - **No tests:** `npm test` is the placeholder `echo "Error: no test specified" && exit 1`. There are **no automated tests** anywhere.
 - **Types style:** string enums for `Formats`/`ResizingType`; object shapes as `type` aliases (not interfaces); boolean-ish flags typed as the string-literal union `'1' | '0'`; `BackgroundRGB` fields are `string`.
 - **Views:** server-rendered EJS + Bootstrap 5. README `### TODOS` slates the EJS layer for replacement by **Vue** ("Improve to Vue instead EJS"), plus a search input and batch pre-compression.
@@ -141,11 +140,10 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 - **Cache invalidation:** key is `md5(JSON.stringify(encoding))` — it depends on `EncodeOptions` key insertion order, so adding/reordering fields in code silently invalidates the whole cache. There is **no cache eviction/TTL**: if a source image changes, the stale transformed copy is served forever until `cache/` is cleared by hand. Unknown query params still bump `Object.keys` > 0, creating a (possibly redundant) cache entry.
 - **Concurrency limit:** default `MAX_CONCURRENT_COMPRESION = 1` serializes all compressions through a single semaphore permit — a throughput bottleneck under load.
 - **Weak/missing error handling:** the compress `catch` is a bare `catch {}` that swallows everything and serves `error-file.png` with HTTP 200 (no logging at the call site). No try/catch around `res.render`/`getDataFromFolder` in `index.ts`. `downloadS3File` swallows **all** errors → `null` → generic 404 (a real misconfig is indistinguishable from a missing object). 404 responses have empty bodies.
-- **Resize quirks:** `width` is mandatory for any resize; `enlarge`/`extend` reach imgproxy only when a `height` is also present (the `if (height !== '')` welding block in `compress.ts`).
+- **Resize requires width:** `validateFile` only builds a `resize` when `width` is present, so `height`/`enlarge`/`extend`/`resizing_type` are ignored if you pass them without a `width`. (`enlarge`/`extend` now apply correctly even without a `height` — `compress.ts` emits the full positional imgproxy `resize:type:width:height:enlarge:extend`.)
 - **PDFs are never transformed:** `.pdf` + query params → static `pdf-file.png`; `.pdf` with no query params falls through to the raw-file branch.
 - **S3 asymmetry:** the app's `S3Client` is created with only `{ region }` (credentials come from the SDK default chain — the `awsAccessKeyId`/`awsSecretAccessKey` exports are effectively unused on the app side). `exisPath` is a no-op `true` in S3 mode. The imgproxy sidecar's S3 env omits `AWS_BUCKET_NAME`. If `IMGPROXY_USE_S3` and `USE_AWS_S3` disagree, listing/download can work while transforms fail (or vice versa).
 - **`IMGPROXY_MAX_SRC_RESOLUTION="9999"`** (megapixels) ≈ unlimited source resolution — DoS/memory risk, compounded by the unclamped width/height params.
-- **Thumbnail fan-out:** `gridImages.ejs` thumbnails request back through this server, so opening a directory listing fires N proxy/resize requests at once. The thumbnail query string is also **malformed**: `?width=300&height=168resizing_type=fit&...` (missing `&` welds `height` and `resizing_type`; `parseInt` is lenient so `height=168` still parses and `resizing_type` is silently dropped to its default).
-- **Local vs S3 file-object shape:** `getLocalData` spreads `...dirent` into each file object, so local file entries carry extra `fs.Dirent` fields that the S3 backend's clean `{ fileSize, name }` does not — despite both being typed `foldersFileType`.
+- **Thumbnail fan-out:** `gridImages.ejs` thumbnails request back through this server, so opening a directory listing fires N proxy/resize requests at once.
 - **Case sensitivity:** `validFiles` is lowercase-only; `IMG.JPG` is silently excluded by the extension checks.
 - **Inspector exposure:** dev binds `--inspect=0.0.0.0:9229` (all interfaces).

@@ -10,7 +10,7 @@ To upload the image files you must provide it manually (via ftp or own developme
 
 Example:
 
-https://yourdomain.com/path/image.jpg?width=300&height=168resizing_type=fit&extend=1&enlarge=1&background_rgb=FF55FF&format=webp&quality=25
+https://yourdomain.com/path/image.jpg?width=300&height=168&resizing_type=fit&extend=1&enlarge=1&background_rgb=FF55FF&format=webp&quality=25
 
 This example is resized to 300 x 168 (ratio 16x9) + converted to webp + reduced quality + added background white if original image don't have same ratio
 

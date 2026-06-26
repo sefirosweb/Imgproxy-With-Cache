@@ -1,7 +1,7 @@
 FROM node:18.12-bullseye AS appbuild
 WORKDIR /home/app
 COPY ./ /home/app
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 FROM node:18.12-bullseye
@@ -13,6 +13,6 @@ COPY package.json ./
 COPY package-lock.json ./
 COPY --from=appbuild /home/app/dist ./dist
 
-RUN npm install
+RUN npm ci --omit=dev
 EXPOSE 8080
 ENTRYPOINT ["start-container"]

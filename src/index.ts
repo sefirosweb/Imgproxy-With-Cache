@@ -8,12 +8,11 @@ const app = express();
 app.set("views", path.join(__dirname, "views", "pages"));
 app.set("view engine", "ejs");
 
-import { Breadcrumb, Formats } from "./types";
+import { Breadcrumb } from "./types";
 import validateFile from "./validateFile";
 
 app.get("/*", async (req: Request, res: Response) => {
     const reqPath = decodeURI(req.path)
-    // tslint:disable-next-line:no-console
     console.log(reqPath)
 
     const mediaRoot = path.join(__dirname, '..', 'media');
@@ -70,6 +69,5 @@ app.get("/*", async (req: Request, res: Response) => {
 });
 
 app.listen(port, () => {
-    // tslint:disable-next-line:no-console
     console.log(`server started at ${appUrl}`);
 });

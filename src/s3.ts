@@ -58,7 +58,7 @@ export const listBucketObjects = async (folderToSearch: string): Promise<folders
       allFolders.push(...response.CommonPrefixes);
     }
 
-    isTruncated = response.IsTruncated;
+    isTruncated = response.IsTruncated ?? false;
     nextMarker = response.NextMarker;
   }
 

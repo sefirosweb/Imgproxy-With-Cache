@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 
-node /home/app/dist/index.js
+# exec so node replaces this shell as PID 1 and receives SIGTERM/SIGINT for graceful shutdown
+exec node /home/app/dist/index.js
 

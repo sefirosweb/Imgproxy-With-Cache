@@ -16,20 +16,17 @@ export type foldersFileType = {
 const getLocalData = (mediaPath: string): foldersFileType => {
     const folders = readdirSync(mediaPath, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
-        .filter(dirent => !(/(^|\/)\.[^\/\.]/g).test(dirent.name))
+        .filter(dirent => !(/(^|\/)\.[^/.]/g).test(dirent.name))
         .map(dirent => dirent.name)
 
     const files = readdirSync(mediaPath, { withFileTypes: true })
         .filter(dirent => !dirent.isDirectory())
         .filter(dirent => validFiles.includes(path.extname(dirent.name)))
-        .filter(dirent => !(/(^|\/)\.[^\/\.]/g).test(dirent.name))
-        .map(dirent => {
-            const newFile = {
-                ...dirent,
-                fileSize: Math.floor(statSync(mediaPath + '/' + dirent.name).size / 1024 / 1024 * 100) / 100
-            }
-            return newFile
-        })
+        .filter(dirent => !(/(^|\/)\.[^/.]/g).test(dirent.name))
+        .map(dirent => ({
+            name: dirent.name,
+            fileSize: Math.floor(statSync(mediaPath + '/' + dirent.name).size / 1024 / 1024 * 100) / 100
+        }))
 
     return {
         folders,
