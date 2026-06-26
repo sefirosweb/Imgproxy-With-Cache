@@ -136,7 +136,7 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 ## Gotchas & footguns
 
 - **Hard-coded paths:** media root `path.join(__dirname,'..','media',reqPath)` and cache dir `path.join(__dirname,'..','cache',md5)` are not env-configurable. The cache-path join is **duplicated independently** in `validateFile.ts` and `compress.ts` — they must stay in sync.
-- **Path traversal:** `reqPath` is joined into the FS path with no `..` normalization before `sendFile`/`exisPath`/`getDataFromFolder`.
+- **Path traversal guard:** [src/index.ts](src/index.ts) resolves the request path and returns `404` for anything that escapes the `media/` root, *before* any FS access (`sendFile`/`exisPath`/`getDataFromFolder`). This guard is the only thing confining requests to `media/` — preserve it if you refactor the routing.
 - **`NODE_TLS_REJECT_UNAUTHORIZED: "0"`** is hard-coded in the **dev** Compose only (disables all TLS cert verification for the Node process). It is absent in production — do not copy it across.
 - **Cache invalidation:** key is `md5(JSON.stringify(encoding))` — it depends on `EncodeOptions` key insertion order, so adding/reordering fields in code silently invalidates the whole cache. There is **no cache eviction/TTL**: if a source image changes, the stale transformed copy is served forever until `cache/` is cleared by hand. Unknown query params still bump `Object.keys` > 0, creating a (possibly redundant) cache entry.
 - **Concurrency limit:** default `MAX_CONCURRENT_COMPRESION = 1` serializes all compressions through a single semaphore permit — a throughput bottleneck under load.

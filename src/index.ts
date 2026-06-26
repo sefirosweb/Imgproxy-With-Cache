@@ -15,7 +15,16 @@ app.get("/*", async (req: Request, res: Response) => {
     const reqPath = decodeURI(req.path)
     // tslint:disable-next-line:no-console
     console.log(reqPath)
-    const mediaPath = path.join(__dirname, '..', 'media', reqPath);
+
+    const mediaRoot = path.join(__dirname, '..', 'media');
+    const mediaPath = path.join(mediaRoot, reqPath);
+
+    // Prevent path traversal: reject any request whose resolved path escapes the media root
+    const resolvedRoot = path.resolve(mediaRoot);
+    const resolvedPath = path.resolve(mediaPath);
+    if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(resolvedRoot + path.sep)) {
+        return res.status(404).send();
+    }
 
     if (validFiles.includes(path.extname(reqPath))) {
         return validateFile(reqPath, req.query, res, mediaPath)
