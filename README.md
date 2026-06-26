@@ -58,7 +58,7 @@ Examples:
     /image.png?width=500&overlay_text=NUEVO&overlay_position=nowe&overlay_size=48&overlay_color=FF0000
     /image.png?width=500&overlay_image=<base64>&overlay_position=noea&overlay_scale=0.2
 
-> **Text overlays need a system font.** The production Docker image installs `fonts-dejavu-core`. For local dev inside the container install it once: `docker compose exec -u root app_imgproxy apt-get update && apt-get install -y fonts-dejavu-core`. Image overlays don't need a font.
+> **Text overlays need a system font.** Both the production image and the dev `docker-compose` install `fonts-dejavu-core` automatically (the dev container installs it on startup). Image overlays don't need a font.
 
 ## Added support to AWS S3!
 
