@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # main is handled by publish.yml (test + publish); CI covers PRs and other branches
   push:
-    branches: ['**']
+    branches-ignore:
+      - main
   pull_request:
 
 jobs:

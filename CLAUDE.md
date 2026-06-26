@@ -4,7 +4,7 @@
 
 A small Express + TypeScript media server that browses a media tree and serves on-the-fly resized/optimized images. Resize/transcode work is delegated to a **darthsim/imgproxy sidecar** (invoked over HTTP, not via `docker exec`); transformed bytes are streamed to an on-disk **cache** so repeat requests are served straight from disk. The same server-rendered EJS listing UI doubles as a live demo of the cache/resize pipeline. Media sources can be the local filesystem or AWS S3.
 
-**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Jest (ts-jest) · sharp (image overlays) · Docker + docker-compose · GitHub Actions (CI + GHCR publish). Current version: **1.1.2**.
+**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Jest (ts-jest) · sharp (image overlays) · Docker + docker-compose · GitHub Actions (CI + GHCR publish).
 
 > Docker is effectively required for development and runtime because imgproxy runs as a sibling container and the app calls it at the hard-coded hostname `imgproxy:8080`. There is no standalone (non-Docker) mode for the transform path.
 
@@ -48,7 +48,7 @@ The Node app and imgproxy share the same media volume and AWS env vars over the 
 | [docker/start-container](docker/start-container) | Bash entrypoint → `node /home/app/dist/index.js`. |
 | [docker-compose.yml](docker-compose.yml) | Dev stack (idling app container + imgproxy sidecar). |
 | [production/docker-compose.yml](production/docker-compose.yml) | Production stack (prebuilt GHCR image + sidecar). |
-| [.github/workflows/publish.yml](.github/workflows/publish.yml) | CI: build + push image to GHCR on `v1.*` tags. |
+| [.github/workflows/publish.yml](.github/workflows/publish.yml) | CI: on push to `main`, run tests then build + push `:latest` to GHCR. |
 
 Runtime directories (each has a `.gitignore` that ignores its own contents): `media/` (source files) and `cache/` (transformed output). Both placeholder images (`error-file.png`, `pdf-file.png`) live in `src/views/`.
 
@@ -125,11 +125,11 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 
 **Docker** (`docker build -f docker/Dockerfile .`): two stages, both `node:18-bullseye` (≥18.17, required by sharp 0.33). The runtime stage `apt-get install`s **`fonts-dejavu-core`** (sharp/SVG text overlays render blank without a font). A project `.npmrc` sets `ignore-scripts=true` (supply-chain hardening); safe because sharp 0.33 ships its binary via `optionalDependencies` (`@img/sharp-*`), not an install script. Stage `appbuild` runs `npm ci` + `npm run build` (devDeps like TypeScript available there). Final stage sets `NODE_ENV=production`, copies `dist`, `package*.json`, and `start-container`, runs **`npm ci --omit=dev`** (reproducible install, runtime deps only), `EXPOSE 8080`, `ENTRYPOINT ["start-container"]`. `start-container` **`exec`s** node so it becomes PID 1 and receives `SIGTERM`/`SIGINT` for graceful shutdown.
 
-**CI (publish)** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers **only** on `v1.*` git tags (a `v2.x` tag would not publish). `checkout@v3` → `login-action@v2` to **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) → `build-push-action@v4` (context `.`, file `docker/Dockerfile`, `push: true`). The image is **always** tagged only `ghcr.io/sefirosweb/imgproxywithcache:latest` — no version-pinned tag, `:latest` is overwritten each release (intentional: no space to keep per-version images). The README's manual `docker push` instructions use Docker-Hub-style names + version tags and are out of sync with CI.
+**CI (publish)** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers on **push to `main`**. A `test` job (`npm ci` → `npm run build` → `npm test`) runs first; the `publish-docker-image` job `needs: test`, so a failing build/test **blocks the publish**. It logs into **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) and `build-push-action@v4` pushes `ghcr.io/sefirosweb/imgproxywithcache:latest`. **There is no version tagging** — `:latest` is the only tag, overwritten on each publish (the project has no versioning scheme).
 
 **Production run:** `docker compose -f production/docker-compose.yml up -d`.
 
-**CI (tests)** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): runs on **every push and pull request** — `npm ci` → `npm run build` (eslint + tsc + copy-assets) → `npm test`.
+**CI (tests)** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): runs on **pull requests and pushes to non-`main` branches** (`main` is covered by the publish workflow's `test` job) — `npm ci` → `npm run build` (eslint + tsc + copy-assets) → `npm test`.
 
 ## Testing
 

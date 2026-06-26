@@ -96,11 +96,19 @@ AWS_SECRET_ACCESS_KEY=your-secret-access-key
 
 You can debug with vscode, default port to listen: 9229
 
-### Upload to docker
+### Publishing the Docker image
 
-1. docker build -f docker/Dockerfile -t sefirosweb/imgproxywithcache:latest .
-2. docker tag sefirosweb/imgproxywithcache:latest sefirosweb/imgproxywithcache:1.1.0
-3. docker push sefirosweb/imgproxywithcache:latest
+Publishing is automated — there is no manual `docker push` and no version tags.
+Every push to `main` runs the test workflow and, only if it passes, builds and
+pushes `ghcr.io/sefirosweb/imgproxywithcache:latest` to GitHub Container Registry
+(see [.github/workflows/publish.yml](.github/workflows/publish.yml)). `:latest` is
+the only tag and is overwritten on each publish.
+
+To build the image locally for testing:
+
+```
+docker build -f docker/Dockerfile -t imgproxywithcache:local .
+```
 
 ### TODOS
 
