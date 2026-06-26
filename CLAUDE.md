@@ -36,7 +36,6 @@ The Node app and imgproxy share the same media volume and AWS env vars over the 
 | [src/getFiltes.ts](src/getFiltes.ts) | **(misspelled — should be `getFiles`)** Directory-browsing layer. Exports `validFiles`, type `foldersFileType`, `getDataFromFolder`, **`exisPath`** (also misspelled). Local backend `getLocalData` (not exported). Dispatches to S3 when `useS3`. |
 | [src/s3.ts](src/s3.ts) | AWS S3 read path. `downloadS3File` (single object stream) and `listBucketObjects` (paginated `ListObjectsCommand`, `Delimiter '/'`). |
 | [src/semaphore.ts](src/semaphore.ts) | `Semaphore` class — concurrency throttle that gates `compress`. |
-| [src/queueManajer.ts](src/queueManajer.ts) | **(misspelled — should be `queueManager`) DEAD CODE.** `QueueManager` class (own state machine, `concurrentJobs = 8`, statuses incl. misspelled `'procesing-stop'`) is exported but **never imported anywhere**. Scaffolding for the unbuilt README TODO "batch compress and cache". The live request path uses `Semaphore`, not this. |
 | [src/types/index.ts](src/types/index.ts) | Shared enums/types: `Formats`, `ResizingType` (member **`fillDdown = 'fill-down'`** — double `d`), `BackgroundRGB`, `Resize`, `EncodeOptions`, `Breadcrumb`. |
 | [src/views/pages/layout.ejs](src/views/pages/layout.ejs) | Top-level rendered template (`res.render("layout", ...)`). Includes `head`, `./pagination`, `footer`. |
 | [src/views/pages/pagination.ejs](src/views/pages/pagination.ejs) | **Misnamed** — it is the actual page body (title, breadcrumb, folder grid, image grid). No pagination logic at all. |
@@ -132,7 +131,7 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 - **Types style:** string enums for `Formats`/`ResizingType`; object shapes as `type` aliases (not interfaces); boolean-ish flags typed as the string-literal union `'1' | '0'`; `BackgroundRGB` fields are `string`.
 - **Views:** server-rendered EJS + Bootstrap 5. README `### TODOS` slates the EJS layer for replacement by **Vue** ("Improve to Vue instead EJS"), plus a search input and batch pre-compression.
 - **Naming:** image/registry name is all-lowercase `imgproxywithcache` under owner `sefirosweb`. Colon-namespaced script variants (`dev`, `dev:start`, `dev:old`, `dockerrun`, `dockerrun:old`).
-- **Misspellings to grep on (intentional in code — do not blindly rename):** `getFiltes`, `exisPath`, `queueManajer`, `fillDdown`, `MAX_CONCURRENT_COMPRESION` / `Compresion`.
+- **Misspellings to grep on (intentional in code — do not blindly rename):** `getFiltes`, `exisPath`, `fillDdown`, `MAX_CONCURRENT_COMPRESION` / `Compresion`.
 
 ## Gotchas & footguns
 
