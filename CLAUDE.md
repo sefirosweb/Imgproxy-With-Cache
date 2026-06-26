@@ -4,7 +4,7 @@
 
 A small Express + TypeScript media server that browses a media tree and serves on-the-fly resized/optimized images. Resize/transcode work is delegated to a **darthsim/imgproxy sidecar** (invoked over HTTP, not via `docker exec`); transformed bytes are streamed to an on-disk **cache** so repeat requests are served straight from disk. The same server-rendered EJS listing UI doubles as a live demo of the cache/resize pipeline. Media sources can be the local filesystem or AWS S3.
 
-**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Docker + docker-compose · GitHub Actions → GHCR. Current version: **1.1.2**.
+**Tech stack:** Node 18 · TypeScript 4.8 (CommonJS, ES6 target) · Express 4 · EJS views (Bootstrap 5) · node-fetch · `@aws-sdk/client-s3` v3 · ESLint + typescript-eslint · Jest (ts-jest) · Docker + docker-compose · GitHub Actions (CI + GHCR publish). Current version: **1.1.2**.
 
 > Docker is effectively required for development and runtime because imgproxy runs as a sibling container and the app calls it at the hard-coded hostname `imgproxy:8080`. There is no standalone (non-Docker) mode for the transform path.
 
@@ -29,7 +29,8 @@ The Node app and imgproxy share the same media volume and AWS env vars over the 
 
 | Path | Job |
 |------|-----|
-| [src/index.ts](src/index.ts) | Entry point. Express + EJS setup, the single `/*` route, file/folder dispatch, breadcrumb, `app.listen`. No exports. |
+| [src/index.ts](src/index.ts) | Entry point. Express + EJS setup, the single `/*` route, file/folder dispatch, breadcrumb. **Exports `app`**; only calls `app.listen` when run directly (`require.main === module`) so tests can import it. |
+| [src/mediaPath.ts](src/mediaPath.ts) | `mediaRoot` + `resolveMediaPath(reqPath)` — resolve a request path inside the media root or return `null`. The **path-traversal guard**, used by `index.ts`. |
 | [src/config.ts](src/config.ts) | `dotenv.config()` + exported config constants (`port`, `appUrl`, `useS3`, `aws*`). Fail-fast S3 credential guard (throws at startup if `USE_AWS_S3=true` and any `AWS_*` missing). |
 | [src/validateFile.ts](src/validateFile.ts) | Request validation, query→`EncodeOptions`, MD5 cache key, cache-hit short-circuit, placeholder/error dispatch. Owns the module-level `Semaphore` throttler. Helpers: `isFormat`, `isValidResizeType`, `getRGB`, `hexToRgb`. Default export `validateFile`. |
 | [src/compress.ts](src/compress.ts) | Builds the imgproxy URL, fetches transformed bytes via node-fetch, streams to cache file. Default export `compress`. |
@@ -119,14 +120,28 @@ npm run dev                         # ts-node + nodemon, inspector on 0.0.0.0:92
 
 **Docker** (`docker build -f docker/Dockerfile .`): two stages, both `node:18.12-bullseye`. Stage `appbuild` runs `npm ci` + `npm run build` (devDeps like TypeScript available there). Final stage sets `NODE_ENV=production`, copies `dist`, `package*.json`, and `start-container`, runs **`npm ci --omit=dev`** (reproducible install, runtime deps only), `EXPOSE 8080`, `ENTRYPOINT ["start-container"]`. `start-container` **`exec`s** node so it becomes PID 1 and receives `SIGTERM`/`SIGINT` for graceful shutdown.
 
-**CI** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers **only** on `v1.*` git tags (a `v2.x` tag would not publish). `checkout@v3` → `login-action@v2` to **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) → `build-push-action@v4` (context `.`, file `docker/Dockerfile`, `push: true`). The image is **always** tagged only `ghcr.io/sefirosweb/imgproxywithcache:latest` — no version-pinned tag, `:latest` is overwritten each release (intentional: no space to keep per-version images). The README's manual `docker push` instructions use Docker-Hub-style names + version tags and are out of sync with CI.
+**CI (publish)** ([.github/workflows/publish.yml](.github/workflows/publish.yml)): triggers **only** on `v1.*` git tags (a `v2.x` tag would not publish). `checkout@v3` → `login-action@v2` to **ghcr.io** (`github.actor` + `GITHUB_TOKEN`) → `build-push-action@v4` (context `.`, file `docker/Dockerfile`, `push: true`). The image is **always** tagged only `ghcr.io/sefirosweb/imgproxywithcache:latest` — no version-pinned tag, `:latest` is overwritten each release (intentional: no space to keep per-version images). The README's manual `docker push` instructions use Docker-Hub-style names + version tags and are out of sync with CI.
 
 **Production run:** `docker compose -f production/docker-compose.yml up -d`.
+
+**CI (tests)** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): runs on **every push and pull request** — `npm ci` → `npm run build` (eslint + tsc + copy-assets) → `npm test`.
+
+## Testing
+
+- **Stack:** Jest + ts-jest, `supertest` for the Express app, `aws-sdk-client-mock` for S3. Config: [jest.config.js](jest.config.js) + [tsconfig.test.json](tsconfig.test.json).
+- **Location:** `tests/*.test.ts`. Tests live *outside* `src/`, so the `tsc` build (which only includes `src/**`) never emits them to `dist/`.
+- **Run:** `npm test` (used by CI), `npm run test:watch`, `npm run test:coverage`.
+- **Coverage:** `mediaPath` (traversal guard), `semaphore` (concurrency limit/ordering), `getFiltes` (local listing + S3 dispatch), `s3` (mocked SDK: key normalization + pagination), `compress` (imgproxy URL building incl. the enlarge/extend regression), `validateFile` (favicon / 404 / zero-query / PDF / cache-hit / miss / error + query→`EncodeOptions` + md5 key), `index` routing (via supertest), `config` (env defaults + S3 guard).
+- **Mocking conventions:**
+  - To flip `useS3` per test, `jest.mock('../src/config', …)` then grab the **same mutable object the source reads** via `jest.requireMock('../src/config')` — do **not** `import * as config` (that namespace is read-only getters *and* a separate copy, so mutations throw / don't take effect).
+  - `node-fetch`, `fs`, and the AWS SDK are mocked; `compress`/`validateFile`/`getFiltes` are mocked when testing their callers.
+  - `index.ts` exports `app` and doesn't `listen` under test, so supertest can drive it directly.
+- **TDD is the rule:** when you add logic or fix a bug, write/extend the test first (red → green). **Every bug fix ships with a regression test** — e.g. `tests/compress.test.ts` → `REGRESSION: applies enlarge/extend even without a height`.
 
 ## Conventions
 
 - **TypeScript / lint:** ESLint (`eslint:recommended` + `plugin:@typescript-eslint/recommended`) via `.eslintrc.json`; `no-console` and `@typescript-eslint/no-explicit-any` are turned **off** (the code logs to console intentionally and uses `any` for query params). `npm run lint` is **check-only** and runs inside `build`, so the build never mutates source; use `npm run lint:fix` to autofix manually. `tsconfig` has **`strict: true`**; `paths` maps `*` → `node_modules/*`; no `exclude`.
-- **No tests:** `npm test` is the placeholder `echo "Error: no test specified" && exit 1`. There are **no automated tests** anywhere.
+- **Tests are mandatory for changes:** an extensive Jest suite lives in `tests/` — see [Testing](#testing). New logic and bug fixes **must** ship with tests (TDD: write the failing test first).
 - **Types style:** string enums for `Formats`/`ResizingType`; object shapes as `type` aliases (not interfaces); boolean-ish flags typed as the string-literal union `'1' | '0'`; `BackgroundRGB` fields are `string`.
 - **Views:** server-rendered EJS + Bootstrap 5. README `### TODOS` slates the EJS layer for replacement by **Vue** ("Improve to Vue instead EJS"), plus a search input and batch pre-compression.
 - **Naming:** image/registry name is all-lowercase `imgproxywithcache` under owner `sefirosweb`. Colon-namespaced script variants (`dev`, `dev:start`, `dev:old`, `dockerrun`, `dockerrun:old`).

@@ -2,26 +2,22 @@ import path from "path";
 import express, { Request, Response } from "express";
 import { appUrl, port } from './config'
 import { exisPath, getDataFromFolder, validFiles } from "./getFiltes";
-
-// Configure Express to use EJS
-const app = express();
-app.set("views", path.join(__dirname, "views", "pages"));
-app.set("view engine", "ejs");
-
 import { Breadcrumb } from "./types";
 import validateFile from "./validateFile";
+import { resolveMediaPath } from "./mediaPath";
+
+// Configure Express to use EJS
+export const app = express();
+app.set("views", path.join(__dirname, "views", "pages"));
+app.set("view engine", "ejs");
 
 app.get("/*", async (req: Request, res: Response) => {
     const reqPath = decodeURI(req.path)
     console.log(reqPath)
 
-    const mediaRoot = path.join(__dirname, '..', 'media');
-    const mediaPath = path.join(mediaRoot, reqPath);
-
     // Prevent path traversal: reject any request whose resolved path escapes the media root
-    const resolvedRoot = path.resolve(mediaRoot);
-    const resolvedPath = path.resolve(mediaPath);
-    if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(resolvedRoot + path.sep)) {
+    const mediaPath = resolveMediaPath(reqPath)
+    if (mediaPath === null) {
         return res.status(404).send();
     }
 
@@ -68,6 +64,9 @@ app.get("/*", async (req: Request, res: Response) => {
     });
 });
 
-app.listen(port, () => {
-    console.log(`server started at ${appUrl}`);
-});
+// Only start listening when run directly (so tests can import `app` without binding a port)
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`server started at ${appUrl}`);
+    });
+}
