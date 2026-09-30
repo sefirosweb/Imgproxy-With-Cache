@@ -55,6 +55,39 @@ describe("validateFile guards", () => {
         expect(mockCompress).not.toHaveBeenCalled();
     });
 
+    it("REGRESSION: serves the original file when only unrecognized params are sent (gclid, _gl, utm_*)", async () => {
+        mockExistsSync.mockReturnValue(true);
+        const { res, done } = run("/a.jpg", { gclid: "abc", _gl: "1*x*_up*MQ..", gbraid: "0AAA", utm_source: "google" });
+        await done;
+        expect(res.sendFile).toHaveBeenCalledWith("/srv/media/a.jpg");
+        expect(mockCompress).not.toHaveBeenCalled();
+    });
+
+    it("REGRESSION: serves the original PDF (not the placeholder) when only unrecognized params are sent", async () => {
+        mockExistsSync.mockReturnValue(true);
+        const { res, done } = run("/doc.pdf", { gclid: "abc" }, "/srv/media/doc.pdf");
+        await done;
+        expect(res.sendFile).toHaveBeenCalledWith("/srv/media/doc.pdf");
+    });
+
+    it.each([
+        ["format", "webp"],
+        ["width", "300"],
+        ["height", "200"],
+        ["enlarge", "1"],
+        ["extend", "1"],
+        ["resizing_type", "fill"],
+        ["background_rgb", "FF0000"],
+        ["quality", "50"],
+        ["overlay_text", "1/4"],
+        ["overlay_image", "aGVsbG8="],
+    ])("still transforms when the recognized param %s is sent alone", async (key, value) => {
+        cacheMiss();
+        mockCompress.mockResolvedValue("/out/cache/x.jpg");
+        await run("/a.jpg", { [key]: value, gclid: "abc" }).done;
+        expect(mockCompress).toHaveBeenCalledTimes(1);
+    });
+
     it("serves the PDF placeholder for a .pdf request with params", async () => {
         mockExistsSync.mockReturnValue(true);
         const { res, done } = run("/doc.pdf", { width: "100" }, "/srv/media/doc.pdf");
