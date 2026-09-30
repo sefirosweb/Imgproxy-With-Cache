@@ -15,6 +15,14 @@ dotenv.config();
 const concurrent = process.env.MAX_CONCURRENT_COMPRESION ? parseInt(process.env.MAX_CONCURRENT_COMPRESION, 10) : 1;
 const throttler = new Semaphore(concurrent);
 
+// Parámetros de query que la app sabe interpretar (más cualquier overlay_*, ver overlay.ts).
+// El resto (gclid, _gl, gbraid, utm_*... que añaden Google Ads / Analytics) se ignora:
+// si no llega ninguno reconocido, se sirve el fichero original sin transformar.
+const TRANSFORM_PARAMS = ['format', 'width', 'height', 'enlarge', 'extend', 'resizing_type', 'background_rgb', 'quality']
+
+const hasTransformParams = (query: any): boolean =>
+    Object.keys(query).some(key => TRANSFORM_PARAMS.includes(key) || key.startsWith('overlay_'))
+
 export default async (reqPath: string, query: any, res: Response, mediaPath: string) => {
     if (reqPath === '/favicon.ico') {
         res.status(404).send()
@@ -26,7 +34,7 @@ export default async (reqPath: string, query: any, res: Response, mediaPath: str
         return
     }
 
-    if (Object.keys(query).length === 0) {
+    if (!hasTransformParams(query)) {
         if (!useS3) {
             return res.sendFile(mediaPath)
         }

@@ -16,7 +16,7 @@ This example is resized to 300 x 168 (ratio 16x9) + converted to webp + reduced 
 
 - In the case that you provide information in the url query with `?` the program will optimize the image according to the data sent and will automatically cache the image in the .cache folder, so the next request will not have to process it
 
-- In the event that you do not provide data in the query, it will send the original size directly
+- In the event that you do not provide data in the query (or only params the program doesn't use, like `gclid`, `_gl` or `utm_*` added by Google Ads / Analytics), it will send the original file directly
 
 ![image](https://raw.githubusercontent.com/sefirosweb/Imgproxy-With-Cache/master/docs/how_to.gif)
 
